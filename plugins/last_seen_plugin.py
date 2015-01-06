@@ -21,7 +21,7 @@ class LastSeenPlugin(Plugin):
 		except:
 			pass
 
-
+	# An example of how everything can be done as part of run if desired.
 	def run(self, message):
 		if on_presence(message, self):
 			if message.Type == "available":

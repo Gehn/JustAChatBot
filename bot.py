@@ -56,6 +56,8 @@ class Bot(ClientXMPP):
 		self.channels = []
 		self.custom_plugins = []
 
+		self.plugin_dir = "./plugins"
+
 		self.import_plugins()
 
 
@@ -117,6 +119,16 @@ class Bot(ClientXMPP):
 				wait=True)
 
 
+	def set_plugin_dir(self, plugin_dir):
+		'''
+			Set where the bot will look for plugins.
+
+				:param plugin_dir: the path to the plugin directory.  All plugins
+					should be python files below this path.
+		'''
+		self.plugin_dir = plugin_dir
+
+
 	def add_plugin(self, plugin):
 		'''
 			Add a Plugin class for the bot to utilize.
@@ -135,7 +147,7 @@ class Bot(ClientXMPP):
 		'''
 		self.custom_plugins = []
 		plugin_filenames = []
-		for (dirpath, dirnames, filenames) in os.walk("./plugins"):
+		for (dirpath, dirnames, filenames) in os.walk(self.plugin_dir):
 			plugin_filenames = filenames
 			break
 
@@ -316,6 +328,7 @@ def main():
 	parser.add_argument("--server", dest="server", default=None)
 	parser.add_argument("--service", dest="service", default=None)
 	parser.add_argument("--nocli", action="store_true", default=False, dest="nocli")
+	parser.add_argument("--plugins", dest="plugins", default=None)
 
 	args = parser.parse_args()	
 
@@ -324,6 +337,7 @@ def main():
 	server = None
 	service = None
 	channels = []
+	plugin_dir = None
 
 	#Parse the config file.  Should I use a tool for doing this? Probably, but this took all of 10 seconds.
 	#Grab config file options first so command line can override them.
@@ -345,6 +359,8 @@ def main():
 								service = line_tokens[1].strip()
 							if line_tokens[0].strip().lower() == "channel":
 								channels.append(line_tokens[1].strip())
+							if line_tokens[0].strip().lower() == "plugins":
+								plugin_dir = line_tokens[1].strip()
 							
 		except:
 			pass
@@ -362,6 +378,22 @@ def main():
 		service = args.service
 	if args.channels != []:
 		channels = args.channels
+	if args.plugins:
+		plugin_dir = args.plugins
+
+	#FIXME: make these reqired via argparser somehow?
+	if not username:
+		print "Error: no username was supplied."
+		sys.exit(-1)
+	if not password:
+		print "Error: no password was supplied."
+		sys.exit(-1)
+	if not server:
+		print "Error: no server was supplied."
+		sys.exit(-1)
+	if not service:
+		print "Error: no service was supplied."
+		sys.exit(-1)
 
 	print "username: ", username
 	print "password: ", password[0], '+', len(password)-1
@@ -373,6 +405,7 @@ def main():
 		bot = Bot(username + "@" + server, password)
 		bot.set_service(service)
 		bot.set_nick(username)
+		bot.set_plugin_dir(plugin_dir)
 		bot.connect()
 		print "Connecting to channels:"
 		for channel in channels:
