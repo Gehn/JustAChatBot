@@ -14,7 +14,6 @@ from sleekxmpp.xmlstream.scheduler import Task, Scheduler
 from base_plugin import Plugin, PluginContext
 from plugin_utils import *
 from base_message import Message
-from utilities import Log
 
 #If we don't have what we need, just run without the CLI
 try:
@@ -22,8 +21,8 @@ try:
 	from curses import wrapper
 	FORCENOCLI = False
 except Exception as e:
-	print "Unable to import CLI dependencies: ", e
-	print "Falling back to stdout"
+	logging.debug("Unable to import CLI dependencies: " + str(e))
+	logging.debug("Falling back to stdout")
 	FORCENOCLI = True
 
 
@@ -159,19 +158,19 @@ class Bot(ClientXMPP):
 			if "__init__" not in base and ".py" == extension:
 				try:
 					plugin_root = __import__("plugins." + os.path.splitext(filename)[0])
-					print "Plugin file:", filename
+					logging.debug("Plugin file:" + str(filename))
 				except Exception as e:
-					print "PLUGIN IMPORT ERROR:", e, " FROM FILE:", filename
+					logging.warning("PLUGIN IMPORT ERROR:" + str(e) + " FROM FILE:" + str(filename))
 
 
-		print "Plugin module root:", dir(plugin_root)
+		logging.debug("Plugin module root:" + str(dir(plugin_root)))
 
 		#Extract the plugin classes from the plugins module tree.  There's got to be a better way to do this, but I'm bad at things.
 		for module, module_name in [(getattr(plugin_root, module_name), module_name) for module_name in dir(plugin_root)]: #For components of the toplevel plugins module (we're looking for plugin files)
 			try:
  				# This is a dirty hack but it makes the logs much cleaner.  Not really necessary, we can just fail out without it.
 				if module.__class__ == os.__class__:
-					print "	From Module:", module
+					logging.info("	From Module:" + str(module))
 					for plugin, plugin_name in [(getattr(module, plugin_name), plugin_name) for plugin_name in dir(module)]: #For items internal to the modules derived from plugin files.
 						try:
 							#Total cludge to supress failed import errors on stuff that should fail while allowing errors on user stuff.
@@ -179,14 +178,14 @@ class Bot(ClientXMPP):
 								and plugin != Plugin \
 								and issubclass(plugin, Plugin): #Make sure we aren't grabbing the parent class or a builtin.
 	
-								print "		Plugin:", plugin
+								logging.info("		Plugin:" + str(plugin))
 								self.add_plugin(plugin)
 						except Exception as e:
-							print "PLUGIN ADD ERROR:", plugin, ":", e
+							logging.warning("PLUGIN ADD ERROR:" + str(plugin) + ":" + str(e))
 			except:
 				continue
 
-		print "Imported plugins: " + str(self.custom_plugins)	
+		logging.debug("Imported plugins: " + str(self.custom_plugins))
 		return self.custom_plugins
 
 
@@ -196,7 +195,7 @@ class Bot(ClientXMPP):
 
 				:param event: the start event that triggers this function.
 		'''
-		logging.debug("Session start")
+		logging.info("Session start")
 		self.send_presence()
 
 		try:
@@ -224,13 +223,13 @@ class Bot(ClientXMPP):
 
 				:param event: The event to run against.
 		'''
-		#print "Got event:" + event + event["body"]
+		#logging.debug("Got event:" + event + event["body"]
 		#Run plugins implemented as children of Plugin
 		for plugin in self.custom_plugins:
 			try:
 				plugin(event)
 			except Exception as e:
-				print "PLUGIN RUNTIME ERROR:", plugin, ":", e
+				logging.exception("PLUGIN RUNTIME ERROR:" + str(plugin) + ":" + str(e))
 
 		#Below is the functionality for running the plugins implemented by standalone decorators. (@Command and @Trigger)
 		#Run commands.  Currently limited to private messages.
@@ -240,11 +239,11 @@ class Bot(ClientXMPP):
 			for command, command_function in [(function.__name__, function) for function in PluginContext.commands]:
 				if len(message_body_tokens) and message_body_tokens[0].strip() == '!' + command.strip():
 					try:
-						print [event] + message_body_tokens[1:]
+						logging.debug([event] + message_body_tokens[1:])
 						call_function_with_variable_arguments(command_function, [event] + message_body_tokens[1:])
 	
 					except Exception as e:
-						print "COMMAND ERROR:", command, ":", e
+						logging.exception("COMMAND ERROR:" + str(command) + ":" + str(e))
 						event.reply("COMMAND ERROR:" + str(e)).send()
 	
 
@@ -256,7 +255,7 @@ class Bot(ClientXMPP):
 						call_function_with_variable_arguments(function, [event] + event.Body.split()[1:])
 						break
 				except Exception as e:
-					print "TRIGGER ERROR:", trigger, ":", e
+					logging.exception("TRIGGER ERROR:" + str(trigger) + ":" + str(e))
 
 
 	def list_commands(self):
@@ -383,23 +382,23 @@ def main():
 
 	#FIXME: make these reqired via argparser somehow?
 	if not username:
-		print "Error: no username was supplied."
+		logging.error("Error: no username was supplied.")
 		sys.exit(-1)
 	if not password:
-		print "Error: no password was supplied."
+		logging.error("Error: no password was supplied.")
 		sys.exit(-1)
 	if not server:
-		print "Error: no server was supplied."
+		logging.error("Error: no server was supplied.")
 		sys.exit(-1)
 	if not service:
-		print "Error: no service was supplied."
+		logging.error("Error: no service was supplied.")
 		sys.exit(-1)
 
-	print "username: ", username
-	print "password: ", password[0], '+', len(password)-1
-	print "server: ", server
-	print "service: ", service
-	print "channels: ", channels
+	logging.info("username: " + str(username))
+	logging.info("password: " + str(password[0]) + '+' + str(len(password)-1))
+	logging.info("server: " + str(server))
+	logging.info("service: " + str(service))
+	logging.info("channels: " + str(channels))
 
 	try:
 		bot = Bot(username + "@" + server, password)
@@ -407,9 +406,9 @@ def main():
 		bot.set_nick(username)
 		bot.set_plugin_dir(plugin_dir)
 		bot.connect()
-		print "Connecting to channels:"
+		logging.info("Connecting to channels:")
 		for channel in channels:
-			print "Connecting to channel: ", channel
+			logging.info("Connecting to channel: " + str(channel))
 			bot.add_channel(channel)
 
 		if args.nocli or FORCENOCLI:
@@ -421,7 +420,7 @@ def main():
 			wrapper(mainloop_wrapper)
 
 	except Exception as e:
-		print e
+		logging.exception(e)
 		exit()
 
 

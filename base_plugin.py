@@ -1,6 +1,7 @@
 import os
 
 from plugin_utils import *
+import logging
 
 
 class Plugin:
@@ -22,7 +23,7 @@ class Plugin:
 				:param function: function to run when command is triggered
 		'''
 		self._commands[command] = function
-		print "			Adding command <" + command + "> for function <" + function.__name__ + "> for plugin <" + self.__class__.__name__ + ">"
+		logging.debug("			Adding command <" + command + "> for function <" + function.__name__ + "> for plugin <" + self.__class__.__name__ + ">")
 
 
 	def add_trigger(self, new_trigger):
@@ -33,7 +34,7 @@ class Plugin:
 				:param new_tigger: function to be called on to filter events the plugin should be called on.
 		'''
 		self._message_triggers.append(new_trigger)
-		print "			Adding trigger <" + new_trigger.__name__ + "> for plugin <" + self.__class__.__name__ + ">"
+		logging.debug("			Adding trigger <" + new_trigger.__name__ + "> for plugin <" + self.__class__.__name__ + ">")
 
 
 	def _get_triggers(self):
@@ -87,12 +88,12 @@ class Plugin:
 			for command, command_function in self._commands.items():
 				if len(message_body_tokens) and message_body_tokens[0].strip() == command.strip():
 					try:
-						print "RUNNING COMAND:", [message] + message_body_tokens[1:]
+						logging.debug("RUNNING COMAND:" + str([message]) + str(message_body_tokens[1:]))
 						call_function_with_variable_arguments(command_function, [message] + message_body_tokens[1:])
 
 					except Exception as e:
 						self.client.send_message(mto=message.From, mbody="COMMAND ERROR", mtype='chat')
-						print "COMMAND ERROR:", command, ":", e
+						logging.exception("COMMAND ERROR:" + str(command) + ":" + str(e))
 
 
 		#Make sure we should even run (not be filtered.)
@@ -103,7 +104,7 @@ class Plugin:
 				if plugin_trigger(message, self):
 					filtered = False
 			except Exception as e:
-				print "PLUGIN TRIGGER ERROR:", plugin_trigger, ":", e
+				logging.exception("PLUGIN TRIGGER ERROR:" + str(plugin_trigger) + ":" + str(e))
 				return
 		if filtered:
 			return
@@ -113,7 +114,7 @@ class Plugin:
 		try:
 			self.run(message)
 		except Exception as e:
-			print "PLUGIN ERROR:", self, ":", e
+			logging.exception("PLUGIN ERROR:" + str(self) + ":" + str(e))
 
 
 	def run(self, message):
@@ -141,7 +142,7 @@ def Command(function):
 
 			:param function: The function to decorate. (to turn into a command)
 	'''
-	print "	Registering command: " + str(function)
+	logging.debug("	Registering command: " + str(function))
 
 	PluginContext.commands.append(function)
 	return function
@@ -154,8 +155,8 @@ def Trigger(trigger_type):
 			:param trigger_type: The function that determines what events this decorated function should trigger on.
 	'''
 	def TriggerDecorator(function):
-		print "	Registering trigger: " + str(trigger_type)
-		print "		Registering trigger to function: " + str(function)
+		logging.debug("	Registering trigger: " + str(trigger_type))
+		logging.debug("		Registering trigger to function: " + str(function))
 
 		try:
 			PluginContext.triggers[function].append(trigger_type)
@@ -174,8 +175,8 @@ def Schedule(delay):
 			:param delay: how long (in seconds) should this function delay before firing.
 	'''
 	def ScheduleDecorator(function, args=[]):
-		print "	Scheduling delay: " + str(trigger_type)
-		print "		Scheduling delay for function: " + str(function)
+		logging.debug("	Scheduling delay: " + str(trigger_type))
+		logging.debug("		Scheduling delay for function: " + str(function))
 
 		schedule_event(delay, function, args)
 
